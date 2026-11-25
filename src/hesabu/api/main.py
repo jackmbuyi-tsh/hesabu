@@ -7,11 +7,11 @@ from sqlalchemy.orm import Session
 
 from .. import __version__
 from ..db import get_session
-from ..models import Payment
-from ..providers import get_adapter
-from ..schemas import PaymentCreate, PaymentOut
+from ..gateway.models import Payment
+from ..gateway.providers import get_adapter
+from ..gateway.schemas import PaymentCreate, PaymentOut
 
-app = FastAPI(title="Mobile Money Gateway", version=__version__)
+app = FastAPI(title="Hesabu", version=__version__)
 
 SessionDep = Annotated[Session, Depends(get_session)]
 

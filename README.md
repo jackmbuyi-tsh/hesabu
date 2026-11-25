@@ -1,39 +1,64 @@
-# mobile-money-gateway
+# Hesabu
 
-A Python service that puts M-Pesa, Orange Money and Airtel Money behind one
-API for businesses in the DR Congo: payment requests, provider callbacks,
-idempotency (no double charges), reconciliation and a transaction ledger.
-The first user will be [Uzuritech](https://uzuritech.com), a multi-tenant
-platform for schools and hotels.
+*Hesabu* is Swahili for "accounts" or "calculation".
 
-> **Status:** early scaffolding. Payments can be created and read through the
-> API against mock providers. Callbacks, realistic provider simulation,
-> reconciliation and the ledger are still to be built.
+Hesabu is a double-entry ledger that must stay exact under concurrent writes
+and `kill -9` crashes. Mobile-money providers (M-Pesa, Orange Money, Airtel
+Money) will feed it through a thin gateway; the ledger is the core. Its first
+intended consumer is Uzuritech, a multi-tenant platform for schools and hotels
+in the DR Congo.
+
+> **Status:** early scaffolding. The ledger is not built yet. A first version
+> of the gateway exists: payments can be created and read against mock
+> providers.
+
+## The invariants
+
+The ledger must never:
+
+1. create or destroy money (the sum of all balances stays zero),
+2. apply the same transaction twice,
+3. lose a confirmed write after a crash,
+4. let a customer or wallet account go negative (system accounts, such as
+   provider clearing and external accounts, may).
+
+## How it will be checked
+
+- Concurrent stress tests: thousands of transfers in parallel; total money is
+  conserved and no customer or wallet balance goes negative.
+- Crash tests: the ledger runs in a separate process, is killed with `kill -9`
+  at chosen points during a write, restarts, and must still be consistent.
+- Reference result: replaying the whole transaction log one transaction at a
+  time must give exactly the balances the concurrent ledger produced.
+- A benchmark of throughput and latency at the target load: a few hundred
+  accounts, 20–50 concurrent transfers, a few hundred operations per second.
+
+The write path and crash recovery come first. The replay match and the
+kill-point tests are the bar before more gateway work.
+
+## Layout
+
+| Path | Contents |
+|---|---|
+| `src/hesabu/ledger/` | The ledger. Empty for now, apart from its invariants |
+| `src/hesabu/gateway/status.py` | Payment lifecycle: `pending` → `succeeded` / `failed` / `expired` |
+| `src/hesabu/gateway/models.py` | `Payment` table, providers, currencies (USD, CDF) |
+| `src/hesabu/gateway/providers/` | Provider adapter interface and a minimal mock adapter |
+| `src/hesabu/api/main.py` | FastAPI app: `GET /health`, `POST /payments`, `GET /payments/{id}` |
+| `tests/` | Gateway API and status-transition tests |
 
 ## Why mock providers
 
 Real provider APIs need merchant accounts and sandbox credentials, and the
-machine this is built on has no internet. Every provider sits behind one
-adapter interface (`mmgateway.providers.ProviderAdapter`), so mock adapters
-are used for development and tests, and real ones plug in later without
-touching the rest of the code.
-
-## What's here
-
-| Path | Contents |
-|---|---|
-| `src/mmgateway/status.py` | Payment lifecycle: `pending` → `succeeded` / `failed` / `expired`, final statuses never change |
-| `src/mmgateway/models.py` | `Payment` table (SQLAlchemy 2), providers and currencies (USD, CDF) |
-| `src/mmgateway/providers/` | Adapter interface, a minimal mock adapter, and the registry |
-| `src/mmgateway/api/main.py` | FastAPI app: `GET /health`, `POST /payments`, `GET /payments/{id}` |
-| `tests/` | API and status-transition tests |
-
-`POST /payments` requires an `Idempotency-Key` header. Sending the same key
-again returns the first payment instead of creating a second one.
+build machine has no internet. Providers sit behind one adapter interface
+(`hesabu.gateway.providers.ProviderAdapter`), so mock adapters are used now
+and real ones can be plugged in later.
 
 ## Stack
 
-Python 3.12+, FastAPI, SQLAlchemy 2, PostgreSQL (via psycopg 3), pytest.
+Python 3.12+, FastAPI, SQLAlchemy 2, PostgreSQL (psycopg 3), pytest.
+Quick unit tests run on SQLite; concurrency and crash tests will run on
+PostgreSQL.
 
 ## Running locally
 
@@ -42,28 +67,22 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
-# PostgreSQL
-createuser mmgateway --pwprompt          # password: change-me
-createdb mmgateway --owner mmgateway
-export MMG_DATABASE_URL="postgresql+psycopg://mmgateway:change-me@127.0.0.1:5432/mmgateway"
+createuser hesabu --pwprompt              # password: change-me
+createdb hesabu --owner hesabu
+export HESABU_DATABASE_URL="postgresql+psycopg://hesabu:change-me@127.0.0.1:5432/hesabu"
 
-python -c "from mmgateway.db import Base, engine; import mmgateway.models; Base.metadata.create_all(engine)"
-uvicorn mmgateway.api.main:app --reload
+python -c "from hesabu.db import Base, engine; import hesabu.gateway.models; Base.metadata.create_all(engine)"
+uvicorn hesabu.api.main:app --reload
 ```
 
-The interactive API docs are at http://127.0.0.1:8000/docs.
-
-Database migrations (Alembic) are not set up yet; the command above creates
-the tables directly.
+API docs: http://127.0.0.1:8000/docs. Alembic migrations are not set up yet.
 
 ## Tests
 
 ```bash
-pytest                                      # SQLite in memory
-MMG_TEST_DATABASE_URL="postgresql+psycopg://user:pass@127.0.0.1:5432/mmgateway_test" pytest
+pytest                                       # SQLite in memory
+HESABU_TEST_DATABASE_URL="postgresql+psycopg://user:pass@127.0.0.1:5432/hesabu_test" pytest
 ```
-
-The second form runs the same tests on an empty PostgreSQL database.
 
 ## Licence
 

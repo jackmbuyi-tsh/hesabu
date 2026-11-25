@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mobile-money-gateway"
+name = "hesabu"
 version = "0.1.0"
-description = "One API for M-Pesa, Orange Money and Airtel Money in the DR Congo."
+description = "A double-entry ledger that stays correct under concurrent writes and crashes, fed by M-Pesa, Orange Money and Airtel Money."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.12"

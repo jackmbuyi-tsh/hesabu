@@ -1,7 +1,7 @@
 import pytest
 
-from mmgateway.models import Payment
-from mmgateway.status import InvalidTransition, PaymentStatus
+from hesabu.gateway.models import Payment
+from hesabu.gateway.status import InvalidTransition, PaymentStatus
 
 
 @pytest.mark.parametrize(

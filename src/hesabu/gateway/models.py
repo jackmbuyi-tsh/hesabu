@@ -6,7 +6,7 @@ from enum import StrEnum
 from sqlalchemy import DateTime, Enum, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .db import Base
+from ..db import Base
 from .status import PaymentStatus, check_transition
 
 

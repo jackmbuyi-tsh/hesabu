@@ -6,12 +6,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from mmgateway.api.main import app
-from mmgateway.db import Base, get_session
+from hesabu.api.main import app
+from hesabu.db import Base, get_session
 
-# Tests run on SQLite in memory by default. Set MMG_TEST_DATABASE_URL to an
+# Tests run on SQLite in memory by default. Set HESABU_TEST_DATABASE_URL to an
 # empty PostgreSQL database to run them there instead.
-TEST_DATABASE_URL = os.environ.get("MMG_TEST_DATABASE_URL", "sqlite+pysqlite:///:memory:")
+TEST_DATABASE_URL = os.environ.get("HESABU_TEST_DATABASE_URL", "sqlite+pysqlite:///:memory:")
 
 
 @pytest.fixture
